@@ -1,0 +1,3 @@
+Python Scientific Calculator
+
+A command-line scientific calculator written in Python. It performs basic arithmetic, exponentiation, square roots, exponentials and natural logarithms, and it checks for common math errors such as division by zero. It uses only Python's standard library, so there is nothing to install.
