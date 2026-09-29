@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+storage/
+.test-storage/
+.e2e-storage/
+test-results/
+playwright-report/
+*.log

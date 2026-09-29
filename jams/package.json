@@ -1,0 +1,18 @@
+{
+  "name": "jams",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal Job Application Management System",
+  "workspaces": ["server", "web"],
+  "scripts": {
+    "dev": "npm run dev -w server & npm run dev -w web",
+    "build": "npm run build -w server && npm run build -w web",
+    "db:generate": "npm run db:generate -w server",
+    "db:migrate": "npm run db:migrate -w server",
+    "db:seed": "npm run db:seed -w server",
+    "test": "npm test -w server",
+    "test:e2e": "npm run test:e2e -w web",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "start": "npm start -w server"
+  }
+}

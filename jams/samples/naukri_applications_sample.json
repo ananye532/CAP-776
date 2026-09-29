@@ -1,0 +1,9 @@
+{
+  "exportedAt": "2026-09-29",
+  "note": "Fictional sample data for testing imports.",
+  "applications": [
+    { "company": "Bluepeak Payments", "designation": "Data Analyst", "appliedOn": "2026-09-27", "status": "Application Submitted", "location": "Bengaluru, Karnataka", "salary": "12-16 LPA", "experience": "2-4 years", "jobId": "NK-60001" },
+    { "company": "Harborview Fintech Pvt. Ltd.", "designation": "Data Analyst - Hybrid", "appliedOn": "2026-09-16", "status": "Not Shortlisted", "location": "Mumbai", "jobId": "NK-60002" },
+    { "company": "Aurora Diagnostics", "designation": "BI Analyst", "appliedOn": "2026-09-05", "status": "Recruiter viewed your profile", "location": "Hyderabad", "salary": "8-10 LPA", "jobId": "NK-60003" }
+  ]
+}
