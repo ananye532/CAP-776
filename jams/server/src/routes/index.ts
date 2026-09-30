@@ -4,7 +4,7 @@ import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { config } from '../config.js';
-import { AppError, badRequest, forbidden } from '../lib/errors.js';
+import { AppError, badRequest, conflict, forbidden } from '../lib/errors.js';
 import { h, paginationSchema, parse, type AuthedRequest } from '../lib/http.js';
 import * as auth from '../services/auth.js';
 import * as settings from '../services/settings.js';
@@ -51,32 +51,33 @@ export function buildRouter() {
     h(async (req, res) => {
       const session = await auth.loadSession(req.cookies?.[auth.SESSION_COOKIE]);
       const hasUser = (await auth.userCount()) > 0;
-      if (!session) return res.json({ hasUser, authenticated: false, registrationOpen: !hasUser && config.ALLOW_REGISTRATION, setupTokenRequired: !hasUser && !!config.SETUP_TOKEN });
+      if (!session) return res.json({ hasUser, authenticated: false, registrationOpen: config.ALLOW_REGISTRATION, setupTokenRequired: !!config.SETUP_TOKEN });
       res.json({ hasUser, authenticated: true, user: await settings.getUser(session.userId), csrfToken: session.csrfToken, aiAvailable: ai.aiAvailable() });
     }),
   );
 
-  r.post(
-    '/auth/setup',
-    loginLimiter,
-    h(async (req, res) => {
-      // Single-user system: the account can only be created while no user exists.
-      if (!config.ALLOW_REGISTRATION || (await auth.userCount()) > 0) throw forbidden('An account already exists. Sign in instead.');
-      const input = parse(
-        credentials.extend({ name: z.string().trim().min(1).max(120), password: z.string().min(10, 'Use at least 10 characters.').max(200) }),
-        req.body,
-      );
-      if (config.SETUP_TOKEN) {
-        const given = Buffer.from(String(req.body?.setupToken ?? ''));
-        const expected = Buffer.from(config.SETUP_TOKEN);
-        if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw forbidden('The setup token is incorrect.');
-      }
-      const user = await auth.createUser(input);
-      const s = await auth.createSession(user.id, req.get('user-agent'));
-      auth.setSessionCookie(res, s.token, s.expiresAt);
-      res.status(201).json({ user: await settings.getUser(user.id), csrfToken: s.csrfToken, aiAvailable: ai.aiAvailable() });
-    }),
-  );
+  // Registration. Each account owns an isolated workspace: every table is scoped by user_id.
+  // When SETUP_TOKEN is set it works as an invite code that every registration must present.
+  const register = h(async (req, res) => {
+    if (!config.ALLOW_REGISTRATION) throw forbidden('Registration is disabled on this server.');
+    const input = parse(
+      credentials.extend({ name: z.string().trim().min(1).max(120), password: z.string().min(10, 'Use at least 10 characters.').max(200) }),
+      req.body,
+    );
+    if (config.SETUP_TOKEN) {
+      const given = Buffer.from(String(req.body?.setupToken ?? ''));
+      const expected = Buffer.from(config.SETUP_TOKEN);
+      if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw forbidden('The invite code is incorrect.');
+    }
+    if (await auth.emailTaken(input.email)) throw conflict('An account with this email already exists. Sign in instead.');
+    const user = await auth.createUser(input);
+    const s = await auth.createSession(user.id, req.get('user-agent'));
+    auth.setSessionCookie(res, s.token, s.expiresAt);
+    res.status(201).json({ user: await settings.getUser(user.id), csrfToken: s.csrfToken, aiAvailable: ai.aiAvailable() });
+  });
+  r.post('/auth/register', loginLimiter, register);
+  // Kept for existing clients; identical to /auth/register.
+  r.post('/auth/setup', loginLimiter, register);
 
   r.post(
     '/auth/login',

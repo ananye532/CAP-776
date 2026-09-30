@@ -18,6 +18,11 @@ export async function userCount() {
   return r.n;
 }
 
+export async function emailTaken(email: string) {
+  const [r] = await db.select({ id: users.id }).from(users).where(eq(users.email, email.toLowerCase()));
+  return !!r;
+}
+
 export async function createUser(input: { email: string; name: string; password: string }) {
   const passwordHash = await hashPassword(input.password);
   const [user] = await db

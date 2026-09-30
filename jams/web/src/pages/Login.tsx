@@ -7,7 +7,14 @@ import { Button, Input, errorMessage } from '../components/ui';
 
 export function Login({ status }: { status: AuthStatus }) {
   const { signedIn } = useAuth();
-  const setup = !status.hasUser && status.registrationOpen;
+  const canRegister = !!status.registrationOpen;
+  // Default to registration on a fresh instance; otherwise to sign-in.
+  const [mode, setMode] = useState<'signin' | 'register'>(canRegister && !status.hasUser ? 'register' : 'signin');
+  const setup = canRegister && mode === 'register';
+  const switchMode = (m: 'signin' | 'register') => {
+    setMode(m);
+    setError(null);
+  };
   const [f, setF] = useState({ name: '', email: '', password: '', setupToken: '' });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -16,7 +23,7 @@ export function Login({ status }: { status: AuthStatus }) {
     setPending(true);
     setError(null);
     try {
-      const r = await api.post<{ user: User; csrfToken: string; aiAvailable: boolean }>(setup ? '/auth/setup' : '/auth/login', setup ? f : { email: f.email, password: f.password });
+      const r = await api.post<{ user: User; csrfToken: string; aiAvailable: boolean }>(setup ? '/auth/register' : '/auth/login', setup ? f : { email: f.email, password: f.password });
       signedIn(r);
     } catch (err) {
       setError(errorMessage(err));
@@ -37,9 +44,9 @@ export function Login({ status }: { status: AuthStatus }) {
           </div>
           <h1 style={{ fontSize: 20 }}>{setup ? 'Create your account' : 'Sign in'}</h1>
           <p className="muted" style={{ margin: '4px 0 18px' }}>
-            {setup ? 'This is a single-user workspace. The first account created owns all data.' : 'Welcome back. Your job search is where you left it.'}
+            {setup ? 'Your account gets its own private workspace. No one else can see your data.' : 'Welcome back. Your job search is where you left it.'}
           </p>
-          {!status.hasUser && !status.registrationOpen ? <p className="muted">Registration is disabled on this server.</p> : null}
+          {!status.hasUser && !canRegister ? <p className="muted">Registration is disabled on this server.</p> : null}
           <form className="stack" onSubmit={submit}>
             {setup ? <Input label="Name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required autoComplete="name" /> : null}
             <Input label="Email" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} required autoComplete="email" autoFocus />
@@ -55,13 +62,13 @@ export function Login({ status }: { status: AuthStatus }) {
             />
             {setup && status.setupTokenRequired ? (
               <Input
-                label="Setup token"
+                label="Invite code"
                 type="password"
                 value={f.setupToken}
                 onChange={(e) => setF({ ...f, setupToken: e.target.value })}
                 required
                 autoComplete="off"
-                help="Set by the server owner (SETUP_TOKEN). Prevents others from claiming this instance."
+                help="Ask the server owner. It keeps strangers from creating accounts here."
               />
             ) : null}
             {error ? (
@@ -73,6 +80,14 @@ export function Login({ status }: { status: AuthStatus }) {
               {setup ? 'Create account' : 'Sign in'}
             </Button>
           </form>
+          {canRegister ? (
+            <p className="small muted" style={{ marginTop: 14, textAlign: 'center' }}>
+              {setup ? 'Already have an account? ' : 'New here? '}
+              <button type="button" className="link-button" onClick={() => switchMode(setup ? 'signin' : 'register')}>
+                {setup ? 'Sign in' : 'Create an account'}
+              </button>
+            </p>
+          ) : null}
           <p className="small subtle row" style={{ marginTop: 16 }}>
             <ShieldCheck width={14} /> Session cookie is httpOnly; passwords are hashed with scrypt.
           </p>

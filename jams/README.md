@@ -1,6 +1,6 @@
 # JAMS — Personal Job Application Management System
 
-A single-user command center for a job search: applications, saved jobs, companies, recruiters, interviews, follow-ups, resumes, documents, imports from LinkedIn/Naukri exports, duplicate review, and analytics computed from your own records.
+A personal command center for a job search (each account gets its own private workspace): applications, saved jobs, companies, recruiters, interviews, follow-ups, resumes, documents, imports from LinkedIn/Naukri exports, duplicate review, and analytics computed from your own records.
 
 > **No LinkedIn or Naukri account connection exists.** JAMS does not scrape, log in to, or call undocumented APIs on either platform. Platform data enters through files you provide (CSV, Excel, JSON, browser-generated exports), manual entry, or pasted emails. Every record shows where it came from (`source_platform`, `source_record_id`, `source_url`, `import_method`, `imported_at`, `last_synced_at`).
 
@@ -40,7 +40,7 @@ npm run dev                       # API on :4000, web on :5173
 
 Open http://localhost:5173.
 - With seed data: sign in as `demo@example.com` / `demo-password-123` (override with `SEED_EMAIL` / `SEED_PASSWORD`).
-- Without seed data: the first visit shows **Create your account**. Only one account can be created; afterwards the setup endpoint is closed. Set `ALLOW_REGISTRATION=false` to disable it entirely.
+- Without seed data: the first visit shows **Create your account**. The sign-in page also links to **Create an account**, so more people can register; every account sees only its own data. Set `ALLOW_REGISTRATION=false` to disable registration.
 
 Production build (the API serves the built web app):
 
@@ -58,7 +58,7 @@ Run behind HTTPS in production: the session cookie is marked `Secure` when `NODE
 1. Import the repository in Vercel with **Root Directory = `jams`** (framework: Other; install and build commands come from `vercel.json`).
 2. Add a Postgres database (e.g. Neon from the Vercel Marketplace) and connect it to the project, so `DATABASE_URL` is set. `POSTGRES_URL`, `JAMS_DATABASE_URL` and `NEON_DATABASE_URL` are also read, in that order, if `DATABASE_URL` is absent.
 3. Create a **private** Vercel Blob store and connect it, so `BLOB_READ_WRITE_TOKEN` is set. Without it, uploads would go to the function's temporary disk and be lost.
-4. Set `SETUP_TOKEN` (random, 16+ characters) before the first visit: creating the first account then requires it, so nobody else can claim a public instance. Remove it after signing up if you like; setup closes once an account exists.
+4. Set `SETUP_TOKEN` (random, 16+ characters) before the first visit: every registration then requires it as an invite code, so strangers cannot create accounts on a public instance. Share it only with people you want to register, or set `ALLOW_REGISTRATION=false` once everyone has signed up.
 5. Set `NODE_ENV=production` and `MAX_UPLOAD_MB=4` (Vercel limits function request bodies to about 4.5 MB). Optionally `ANTHROPIC_API_KEY`.
 6. Redeploy after changing environment variables.
 
@@ -88,8 +88,8 @@ All variables live in `jams/.env` (read by the server scripts via `--env-file-if
 | `SESSION_TTL_DAYS` | `14` | Sliding session lifetime |
 | `STORAGE_DIR` | `./storage` | Local object storage root for uploads (relative to the server's working directory) |
 | `MAX_UPLOAD_MB` | `15` | Per-file upload limit |
-| `ALLOW_REGISTRATION` | `true` | Allows first-run account creation when no user exists |
-| `SETUP_TOKEN` | — | If set, required to create the first account (use on public deployments) |
+| `ALLOW_REGISTRATION` | `true` | Allows new accounts to register from the sign-in page |
+| `SETUP_TOKEN` | — | If set, an invite code required for every registration (use on public deployments) |
 | `BLOB_READ_WRITE_TOKEN` | — | Store uploads in private Vercel Blob instead of local disk |
 | `ANTHROPIC_API_KEY` | — | Optional. Enables AI summaries and AI resume comparison |
 | `AI_MODEL` | `claude-opus-5-5` | Model used when AI is enabled |
@@ -153,7 +153,7 @@ Choices:
 - **Drizzle ORM** on `pg`: typed queries, plain SQL migrations, no binary engine.
 - **Auth**: scrypt password hashing (Node built-in), opaque session tokens stored hashed in `sessions`, httpOnly SameSite=Strict cookie, per-session CSRF token header.
 - **Charts**: Recharts, colors from a validated colorblind-safe palette; status colors are semantic only and always paired with a text label.
-- **Multi-tenancy readiness**: every owned table has `user_id` and every query is scoped by it, although the product is single-user.
+- **Per-user isolation**: every owned table has `user_id` and every query is scoped by it; an integration test checks one account cannot read another's records.
 
 Repository layout:
 
@@ -231,7 +231,7 @@ REST under `/api`. JSON in/out. Errors: `{ "error": { "code", "message", "detail
 
 | Area | Endpoints |
 |---|---|
-| Auth | `GET /auth/status`, `POST /auth/setup`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/change-password`, `DELETE /auth/account` |
+| Auth | `GET /auth/status`, `POST /auth/register` (alias `/auth/setup`), `POST /auth/login`, `POST /auth/logout`, `POST /auth/change-password`, `DELETE /auth/account` |
 | Applications | `GET/POST /applications`, `POST /applications/bulk`, `GET/PATCH/DELETE /applications/:id`, `POST /applications/:id/status`, `POST /applications/:id/notes`, `POST/DELETE /applications/:id/contacts[/:contactId]` |
 | Jobs | `GET/POST /jobs`, `GET/PATCH/DELETE /jobs/:id`, `POST /jobs/:id/archive`, `POST /jobs/:id/convert`, `POST /jobs/:id/extract-skills`, `POST /jobs/:id/ai-extract` |
 | Companies | `GET/POST /companies`, `GET/PATCH/DELETE /companies/:id`, `POST /companies/:id/merge` |
@@ -298,7 +298,7 @@ npm run typecheck
 - Reverting an import removes what it created and detaches its sources, but status changes it applied to pre-existing applications remain in their history (they are labelled `import`).
 - Company matching merges only exact normalized names (“Google LLC” = “Google India” = “Google”); similar names are suggested for manual merge. Subsidiaries that share a first word are compared for duplicates, which can surface false positives for review.
 - Notifications are in-app only and computed on read (no push/email, no background scheduler).
-- Single user; no multi-tenant admin, sharing or RBAC (the schema is user-scoped so this can be added).
+- Accounts are independent; there is no admin UI, sharing between accounts, or RBAC.
 - Local disk storage only; backups of uploaded files must be taken from `STORAGE_DIR`.
 - Salary parsing understands INR shorthand (L/LPA/Cr) and k/M; other formats are kept as metadata.
 

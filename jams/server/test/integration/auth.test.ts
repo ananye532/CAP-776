@@ -11,11 +11,31 @@ describe('auth & security', () => {
     expect(r.body.error.code).toBe('unauthorized');
   });
 
-  it('creates the single account once, then disables setup', async () => {
+  it('registers additional accounts, rejecting duplicate emails', async () => {
     const c = await signedInAgent();
     expect(c.csrf).toBeTruthy();
-    const again = await request(app).post('/api/auth/setup').send({ name: 'X', email: 'x@example.com', password: 'another-password-1' });
-    expect(again.status).toBe(403);
+    const second = await request(app).post('/api/auth/register').send({ name: 'Other', email: 'other@example.com', password: 'another-password-1' });
+    expect(second.status).toBe(201);
+    expect(second.body.user.email).toBe('other@example.com');
+    const dupe = await request(app).post('/api/auth/register').send({ name: 'X', email: 'TEST@example.com', password: 'another-password-1' });
+    expect(dupe.status).toBe(409);
+    expect(dupe.body.error.message).toMatch(/already exists/);
+    const status = await request(app).get('/api/auth/status');
+    expect(status.body).toMatchObject({ hasUser: true, authenticated: false, registrationOpen: true });
+  });
+
+  it("isolates each account's data", async () => {
+    const a = request.agent(app);
+    const la = await a.post('/api/auth/login').send({ email: 'test@example.com', password: 'correct-horse-battery' });
+    const created = await a.post('/api/applications').set('X-CSRF-Token', la.body.csrfToken).send({ job: { title: 'Private role', companyName: 'Secret Co' } });
+    expect(created.status).toBe(201);
+    const b = request.agent(app);
+    await b.post('/api/auth/login').send({ email: 'other@example.com', password: 'another-password-1' });
+    expect((await b.get(`/api/applications/${created.body.id}`)).status).toBe(404);
+    const list = await b.get('/api/applications');
+    expect(JSON.stringify(list.body)).not.toMatch(/Private role/);
+    expect(JSON.stringify((await b.get('/api/companies')).body)).not.toMatch(/Secret Co/);
+    expect(JSON.stringify((await b.get('/api/search?q=Secret')).body)).not.toMatch(/Secret Co|Private role/);
   });
 
   it('logs in, sets an httpOnly cookie and never returns the password hash', async () => {

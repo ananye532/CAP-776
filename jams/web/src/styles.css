@@ -551,3 +551,17 @@ mark { background: color-mix(in srgb, var(--series-4) 35%, transparent); color: 
 }
 @media (min-width: 761px) { .show-mobile { display: none !important; } }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent-text);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.link-button:hover {
+  color: var(--accent-hover);
+}
