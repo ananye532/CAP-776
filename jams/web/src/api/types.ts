@@ -49,6 +49,7 @@ export interface AuthStatus {
   hasUser: boolean;
   authenticated: boolean;
   registrationOpen?: boolean;
+  setupTokenRequired?: boolean;
   user?: User;
   csrfToken?: string;
   aiAvailable?: boolean;

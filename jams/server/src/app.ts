@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { config, isProd } from './config.js';
+import { config, isProd, isServerless } from './config.js';
 import { buildRouter } from './routes/index.js';
 import { errorHandler, notFoundHandler } from './lib/http.js';
 import { pool } from './db/client.js';
@@ -13,7 +13,8 @@ import { pool } from './db/client.js';
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
-  if (isProd) app.set('trust proxy', 1);
+  // Behind Vercel's or another reverse proxy: needed for secure cookies and per-client rate limits.
+  if (isProd || isServerless) app.set('trust proxy', 1);
 
   app.use(
     helmet({

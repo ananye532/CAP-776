@@ -8,7 +8,7 @@ import { Button, Input, errorMessage } from '../components/ui';
 export function Login({ status }: { status: AuthStatus }) {
   const { signedIn } = useAuth();
   const setup = !status.hasUser && status.registrationOpen;
-  const [f, setF] = useState({ name: '', email: '', password: '' });
+  const [f, setF] = useState({ name: '', email: '', password: '', setupToken: '' });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const submit = async (e: FormEvent) => {
@@ -53,6 +53,17 @@ export function Login({ status }: { status: AuthStatus }) {
               autoComplete={setup ? 'new-password' : 'current-password'}
               help={setup ? 'At least 10 characters.' : undefined}
             />
+            {setup && status.setupTokenRequired ? (
+              <Input
+                label="Setup token"
+                type="password"
+                value={f.setupToken}
+                onChange={(e) => setF({ ...f, setupToken: e.target.value })}
+                required
+                autoComplete="off"
+                help="Set by the server owner (SETUP_TOKEN). Prevents others from claiming this instance."
+              />
+            ) : null}
             {error ? (
               <div className="error-box" role="alert">
                 {error}

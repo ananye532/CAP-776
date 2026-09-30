@@ -1,4 +1,5 @@
 import { Router, type Request } from 'express';
+import { timingSafeEqual } from 'node:crypto';
 import multer from 'multer';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
@@ -50,7 +51,7 @@ export function buildRouter() {
     h(async (req, res) => {
       const session = await auth.loadSession(req.cookies?.[auth.SESSION_COOKIE]);
       const hasUser = (await auth.userCount()) > 0;
-      if (!session) return res.json({ hasUser, authenticated: false, registrationOpen: !hasUser && config.ALLOW_REGISTRATION });
+      if (!session) return res.json({ hasUser, authenticated: false, registrationOpen: !hasUser && config.ALLOW_REGISTRATION, setupTokenRequired: !hasUser && !!config.SETUP_TOKEN });
       res.json({ hasUser, authenticated: true, user: await settings.getUser(session.userId), csrfToken: session.csrfToken, aiAvailable: ai.aiAvailable() });
     }),
   );
@@ -65,6 +66,11 @@ export function buildRouter() {
         credentials.extend({ name: z.string().trim().min(1).max(120), password: z.string().min(10, 'Use at least 10 characters.').max(200) }),
         req.body,
       );
+      if (config.SETUP_TOKEN) {
+        const given = Buffer.from(String(req.body?.setupToken ?? ''));
+        const expected = Buffer.from(config.SETUP_TOKEN);
+        if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw forbidden('The setup token is incorrect.');
+      }
       const user = await auth.createUser(input);
       const s = await auth.createSession(user.id, req.get('user-agent'));
       auth.setSessionCookie(res, s.token, s.expiresAt);

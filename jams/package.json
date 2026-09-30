@@ -3,7 +3,10 @@
   "private": true,
   "version": "0.1.0",
   "description": "Personal Job Application Management System",
-  "workspaces": ["server", "web"],
+  "workspaces": [
+    "server",
+    "web"
+  ],
   "scripts": {
     "dev": "npm run dev -w server & npm run dev -w web",
     "build": "npm run build -w server && npm run build -w web",
@@ -13,6 +16,7 @@
     "test": "npm test -w server",
     "test:e2e": "npm run test:e2e -w web",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
-    "start": "npm start -w server"
+    "start": "npm start -w server",
+    "build:vercel": "npm run build -w web && node scripts/build-vercel.mjs"
   }
 }

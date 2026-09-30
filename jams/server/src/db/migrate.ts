@@ -3,9 +3,9 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { db, pool } from './client.js';
 
-const migrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../drizzle');
+const defaultMigrationsFolder = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../drizzle');
 
-export async function runMigrations() {
+export async function runMigrations(migrationsFolder = process.env.MIGRATIONS_DIR ?? defaultMigrationsFolder) {
   await migrate(db, { migrationsFolder });
 }
 
