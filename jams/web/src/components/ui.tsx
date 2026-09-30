@@ -432,7 +432,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 export const useToast = () => useContext(ToastCtx);
-export const errorMessage = (e: unknown) => (e instanceof ApiError ? e.message : 'Something went wrong. Please try again.');
+export const errorMessage = (e: unknown) => {
+  if (!(e instanceof ApiError)) return 'Something went wrong. Please try again.';
+  // The server explains an unavailable database with a secret-free hint (see server/src/vercel.ts).
+  const hint = e.code === 'db_unavailable' && e.details && !Array.isArray(e.details) ? (e.details as { hint?: unknown }).hint : undefined;
+  return typeof hint === 'string' ? `${e.message} ${hint}` : e.message;
+};
 
 // ---------------------------------------------------------------- misc
 export function Kpi({ label, value, sub, href, icon }: { label: string; value: ReactNode; sub?: ReactNode; href?: string; icon?: ReactNode }) {

@@ -48,6 +48,8 @@ export interface User {
 export interface AuthStatus {
   hasUser: boolean;
   authenticated: boolean;
+  /** Set when /auth/status failed because the server is unavailable. */
+  unavailable?: string;
   registrationOpen?: boolean;
   setupTokenRequired?: boolean;
   user?: User;

@@ -3,13 +3,8 @@ import { z } from 'zod';
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
-  // Vercel's Neon integration provides DATABASE_URL (or POSTGRES_URL on some setups). JAMS_DATABASE_URL and
-  // NEON_DATABASE_URL are accepted too, for when the dashboard won't let you add DATABASE_URL itself.
-  DATABASE_URL: z
-    .string()
-    .default(
-      process.env.POSTGRES_URL ?? process.env.JAMS_DATABASE_URL ?? process.env.NEON_DATABASE_URL ?? 'postgres://jams:jams@localhost:5432/jams',
-    ),
+  // Resolved below from DATABASE_URL, POSTGRES_URL, JAMS_DATABASE_URL or NEON_DATABASE_URL.
+  DATABASE_URL: z.string().optional(),
   /** Origin of the web client, used for CORS-free same-site checks. */
   APP_ORIGIN: z.string().default('http://localhost:5173'),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(14),
@@ -34,6 +29,35 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
 });
 
-export const config = envSchema.parse(process.env);
+const DATABASE_URL_VARS = ['DATABASE_URL', 'POSTGRES_URL', 'JAMS_DATABASE_URL', 'NEON_DATABASE_URL'] as const;
+
+/**
+ * Tolerates common copy-paste forms of a connection string: surrounding whitespace or quotes, and the
+ * `psql 'postgresql://…'` command that Neon's dashboard offers next to the bare URL.
+ */
+export function cleanDatabaseUrl(raw: string | undefined): string | undefined {
+  let v = raw?.trim();
+  if (!v) return undefined;
+  v = v.replace(/^psql\s+/i, '').trim();
+  const q = v[0];
+  if ((q === "'" || q === '"') && v.endsWith(q)) v = v.slice(1, -1).trim();
+  return v || undefined;
+}
+
+function resolveDatabaseUrl(env: NodeJS.ProcessEnv) {
+  // Vercel's Neon integration provides DATABASE_URL (or POSTGRES_URL on some setups). JAMS_DATABASE_URL and
+  // NEON_DATABASE_URL are accepted too, for when the dashboard won't let you add DATABASE_URL itself.
+  for (const name of DATABASE_URL_VARS) {
+    const url = cleanDatabaseUrl(env[name]);
+    if (url) return { url, source: name as string };
+  }
+  return { url: 'postgres://jams:jams@localhost:5432/jams', source: 'default' };
+}
+
+const parsed = envSchema.parse(process.env);
+const db = resolveDatabaseUrl(process.env);
+export const config = { ...parsed, DATABASE_URL: db.url };
+/** Which environment variable supplied the database URL ('default' when none did). */
+export const databaseUrlSource = db.source;
 export const isProd = config.NODE_ENV === 'production';
 export const isServerless = !!config.VERCEL;

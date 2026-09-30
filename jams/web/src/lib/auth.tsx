@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, onUnauthorized, setCsrfToken } from '../api/client';
+import { ApiError, api, onUnauthorized, setCsrfToken } from '../api/client';
+import { errorMessage } from '../components/ui';
 import type { AuthStatus, User } from '../api/types';
 import { applyTheme } from './hooks';
 
@@ -25,8 +26,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCsrfToken(s.csrfToken ?? null);
       if (s.user) applyTheme(s.user.settings.theme);
       setStatus(s);
-    } catch {
-      setStatus({ hasUser: true, authenticated: false });
+    } catch (e) {
+      // Keep the sign-in form usable, but say why the server is unavailable (e.g. database misconfigured).
+      setStatus({ hasUser: true, authenticated: false, unavailable: e instanceof ApiError && e.status === 503 ? errorMessage(e) : undefined });
     }
   }, []);
 

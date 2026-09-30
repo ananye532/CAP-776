@@ -46,6 +46,11 @@ export function Login({ status }: { status: AuthStatus }) {
           <p className="muted" style={{ margin: '4px 0 18px' }}>
             {setup ? 'Your account gets its own private workspace. No one else can see your data.' : 'Welcome back. Your job search is where you left it.'}
           </p>
+          {status.unavailable ? (
+            <div className="error-box" role="alert" style={{ marginBottom: 14 }}>
+              {status.unavailable}
+            </div>
+          ) : null}
           {!status.hasUser && !canRegister ? <p className="muted">Registration is disabled on this server.</p> : null}
           <form className="stack" onSubmit={submit}>
             {setup ? <Input label="Name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required autoComplete="name" /> : null}
