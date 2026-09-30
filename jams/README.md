@@ -56,7 +56,7 @@ Run behind HTTPS in production: the session cookie is marked `Secure` when `NODE
 `vercel.json` + `scripts/build-vercel.mjs` produce a [Build Output API](https://vercel.com/docs/build-output-api) bundle: the React app as static files and the whole Express API as one Node.js function (`/api/*`). Migrations run on each cold start before the first request.
 
 1. Import the repository in Vercel with **Root Directory = `jams`** (framework: Other; install and build commands come from `vercel.json`).
-2. Add a Postgres database (e.g. Neon from the Vercel Marketplace) and connect it to the project, so `DATABASE_URL` (or `POSTGRES_URL`) is set.
+2. Add a Postgres database (e.g. Neon from the Vercel Marketplace) and connect it to the project, so `DATABASE_URL` is set. `POSTGRES_URL`, `JAMS_DATABASE_URL` and `NEON_DATABASE_URL` are also read, in that order, if `DATABASE_URL` is absent.
 3. Create a **private** Vercel Blob store and connect it, so `BLOB_READ_WRITE_TOKEN` is set. Without it, uploads would go to the function's temporary disk and be lost.
 4. Set `SETUP_TOKEN` (random, 16+ characters) before the first visit: creating the first account then requires it, so nobody else can claim a public instance. Remove it after signing up if you like; setup closes once an account exists.
 5. Set `NODE_ENV=production` and `MAX_UPLOAD_MB=4` (Vercel limits function request bodies to about 4.5 MB). Optionally `ANTHROPIC_API_KEY`.

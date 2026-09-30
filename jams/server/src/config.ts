@@ -3,8 +3,13 @@ import { z } from 'zod';
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
-  // Vercel's Neon integration provides DATABASE_URL (or POSTGRES_URL on some setups).
-  DATABASE_URL: z.string().default(process.env.POSTGRES_URL ?? 'postgres://jams:jams@localhost:5432/jams'),
+  // Vercel's Neon integration provides DATABASE_URL (or POSTGRES_URL on some setups). JAMS_DATABASE_URL and
+  // NEON_DATABASE_URL are accepted too, for when the dashboard won't let you add DATABASE_URL itself.
+  DATABASE_URL: z
+    .string()
+    .default(
+      process.env.POSTGRES_URL ?? process.env.JAMS_DATABASE_URL ?? process.env.NEON_DATABASE_URL ?? 'postgres://jams:jams@localhost:5432/jams',
+    ),
   /** Origin of the web client, used for CORS-free same-site checks. */
   APP_ORIGIN: z.string().default('http://localhost:5173'),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(14),
